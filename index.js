@@ -14,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 const corsOptions = {
-    origin: 'https://liquid-store.vercel.app',
+    origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     optionsSuccessStatus: 204
