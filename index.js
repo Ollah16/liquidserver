@@ -14,10 +14,10 @@ app.use(express.urlencoded({ extended: true }));
 
 
 const corsOptions = {
-    origin: 'https://liquid-store.vercel.app', // Allow this origin
+    origin: 'https://liquid-store.vercel.app',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, // Allow credentials (cookies, authorization headers, etc.)
-    optionsSuccessStatus: 204 // For legacy browser support
+    credentials: true,
+    optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions))
