@@ -6,21 +6,21 @@ const cors = require('cors')
 // Create an instance of the Express app
 const app = express();
 
-// Routes
-const userRoute = require('./routes/user')
-
-// Middleware
-app.use(express.urlencoded({ extended: true }));
-
-
 const corsOptions = {
-    origin: true,
+    origin: 'https://liquid-store.vercel.app/',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions))
+
+
+// Routes
+const userRoute = require('./routes/user')
+
+// Middleware
+app.use(express.urlencoded({ extended: true }));
 
 // Using Route
 app.use('/user', userRoute)
