@@ -16,12 +16,11 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 
+// Middleware
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 const userRoute = require('./routes/user')
-
-// Middleware
-app.use(express.urlencoded({ extended: true }));
 
 // Using Route
 app.use('/user', userRoute)
