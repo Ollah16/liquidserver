@@ -152,7 +152,7 @@ exports.getOtp = async (req, res) => {
 };
 
 exports.submitOtp = async (req, res) => {
-    const { otp: oneTimeP } = req.body;
+    const { oneTimeP = otp } = req.body;
 
     try {
         const { userId } = req.userId;
