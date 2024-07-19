@@ -14,7 +14,7 @@ const corsOptions = {
     optionsSuccessStatus: 204
 };
 
-app.use(cors({ origin: false }))
+app.use(cors(corsOptions))
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
