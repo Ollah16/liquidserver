@@ -8,7 +8,15 @@ connect(process.env.MONGODB_URI)
 
 // User Schema
 const userSchema = new Schema({
+    title: {
+        type: String,
+        required: true
+    },
     firstName: {
+        type: String,
+        required: true
+    },
+    lastName: {
         type: String,
         required: true
     },
@@ -17,10 +25,6 @@ const userSchema = new Schema({
         required: true
     },
     password: {
-        type: String,
-        required: true
-    },
-    lastName: {
         type: String,
         required: true
     },
@@ -34,10 +38,13 @@ const userSchema = new Schema({
         unique: true
     },
     phone: {
-        type: String,
+        type: Number,
         required: true
     },
     address: {
+        houseNo: {
+            type: String,
+        },
         street: {
             type: String,
         },
@@ -47,23 +54,26 @@ const userSchema = new Schema({
         state: {
             type: String,
         },
-        zip: {
+        postCode: {
             type: String,
         }
     },
-    accountNumber: {
+    sortCode: {
         type: String,
-        // required: true,
-        unique: true
+        required: true,
+    },
+    accountNumber: {
+        type: Number,
+        required: true,
     },
     accountType: {
         type: String,
-        enum: ['savings', 'checking', 'business'],
-        // required: true
+        enum: ['classic', 'current', 'business'],
+        required: true
     },
     balance: {
         type: Number,
-        // required: true,
+        required: true,
         min: [0, 'Balance cannot be negative']
     },
     created_at: {
@@ -74,10 +84,9 @@ const userSchema = new Schema({
 
 // Statement Schema
 const statementSchema = new Schema({
-    account_number: {
+    transaction_description: {
         type: String,
         required: true,
-        ref: 'User'
     },
     transaction_date: {
         type: Date,
@@ -96,7 +105,13 @@ const statementSchema = new Schema({
     balance_after_transaction: {
         type: Number,
         required: true
+    },
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     }
+
 });
 
 // Create models

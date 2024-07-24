@@ -2,10 +2,10 @@ const bcrypt = require('bcrypt')
 const jwt = require("jsonwebtoken");
 const { authenticator } = require('otplib');
 const nodemailer = require('nodemailer');
-const { User } = require('../model/userSchema');
+const { User, Statement } = require('../model/userSchema');
 
 const secret = authenticator.generateSecret();
-const otp = authenticator.generate(secret);
+let oneTimePass;
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.office365.com',
@@ -25,12 +25,12 @@ const transporter = nodemailer.createTransport({
     maxMessages: 100
 });
 
-const sendOTPByEmail = async (email, otp, retries = 3) => {
+const sendOTPByEmail = async (email, oneTimePass, retries = 3) => {
     const mailOptions = {
         from: process.env.EMAIL,
         to: email,
         subject: 'Your OTP Code',
-        text: `Your one time password is ${otp}`
+        text: `Your one time password is ${oneTimePass}`
     };
 
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -88,41 +88,50 @@ exports.handleUserLogin = async (req, res) => {
 };
 
 exports.handleUserReg = async (req, res) => {
-    const { firstName, lastName, dob, accountNumber, email, phone, password, userId } = req.body;
+    const { title, firstName, lastName, userId, password, dob, email, phone, street, city, state, postCode, accountNumber, accountType, sortCode, balance } = req.body;
+
+    const address = { street, city, state, postCode }
+
+    // Validate input
+    if (!firstName || !lastName || !dob || !accountNumber || !email || !phone || !password || !userId) {
+        return res.status(400).json({ error: 'All fields are required.' });
+    }
 
     try {
-        // Check if user already exists
-        const existingUser = await User.findOne({ $or: [{ email }, { accountNumber }] });
-
+        // Check if the user already exists
+        const existingUser = await User.findOne({ $or: [{ email }, { accountNumber }, { userId }] });
         if (existingUser) {
-            return res.status(400).json({ error: 'User with this email or account number already exists.' });
+            return res.status(409).json({ error: 'Email or account number already in use.' });
         }
 
         // Hash the password
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        const hashPassword = await bcrypt.hash(password, salt);
 
-        // Create a new user instance
+        // Create a new user
         const newUser = new User({
+            title,
             firstName,
             lastName,
+            userId,
+            password: hashPassword,
             dob,
-            accountNumber,
             email,
             phone,
-            password: hashedPassword,
-            userId
+            address,
+            accountNumber,
+            accountType,
+            balance: parseFloat(balance),
+            sortCode
         });
 
         // Save the user to the database
         await newUser.save();
 
-        // Respond with success message
-        res.status(201).json({ message: 'User registered successfully.' });
-
+        return res.status(201).json({ message: 'User registered successfully.' });
     } catch (error) {
         console.error('Error handling user registration:', error.message);
-        res.status(500).json({ error: 'Internal server error.' });
+        return res.status(500).json({ error: 'Internal server error.' });
     }
 };
 
@@ -139,9 +148,12 @@ exports.getOtp = async (req, res) => {
         const { email } = user;
 
         //Generate one time password
+        oneTimePass = authenticator.generate(secret)
+        console.log(oneTimePass)
+
 
         // Send OTP to user's email
-        sendOTPByEmail(email, otp);
+        // sendOTPByEmail(email, oneTimePass);
 
         // Respond with success message
         return res.status(200).json({ message: 'OTP sent successfully' });
@@ -152,21 +164,23 @@ exports.getOtp = async (req, res) => {
 };
 
 exports.submitOtp = async (req, res) => {
-    const { oneTimeP = otp } = req.body;
+    const { otp } = req.body;
 
     try {
         const { userId } = req.userId;
-
         // Retrieve user's email from database using the provided id
         const user = await User.findById(userId);
 
-        if (!oneTimeP) {
+        if (!otp) {
             return res.status(400).json({ error: 'OTP is required.' });
         }
 
         // Verify OTP token
-        const isValid = authenticator.verify({ token: oneTimeP, secret });
-        console.log(otp, oneTimeP, isValid)
+        // const isValid = authenticator.verify({ token: oneTimePass, secret });
+        const isValid = oneTimePass === otp
+        console.log(typeof oneTimePass, typeof otp)
+
+        console.log(otp, oneTimePass, isValid)
 
         if (!isValid) {
             return res.status(401).json({ error: 'Invalid OTP token.' });
@@ -182,3 +196,120 @@ exports.submitOtp = async (req, res) => {
         res.status(500).json({ error: 'Internal server error.' });
     }
 };
+
+exports.getUserCredentials = async (req, res) => {
+    //validate user
+    const { userId } = req.userId
+
+    try {
+        const user = await User.findById(userId)
+
+        if (!user) {
+            res.status(404).json({ error: 'User does not exist' })
+        }
+
+        const { title, firstName, lastName, dob, email, phone, balance, address, accountNumber, accountType, sortCode } = user
+
+        const lastLogin = new Date()
+
+        const userDetails = { title, firstName, lastName, dob, email, phone, balance, address, accountNumber, accountType, sortCode, lastLogin }
+
+        res.status(200).json({ userDetails })
+
+    } catch (error) {
+
+        console.error('Error generating details:', error.message);
+        return res.status(500).json({ error: 'Internal server error' });
+
+    }
+}
+
+exports.getStatement = async (req, res) => {
+    const { userId } = req.userId
+
+    try {
+        const statement = await Statement.find({ userId })
+        res.status(200).json({ statement })
+
+    } catch (error) {
+        console.error(error.message)
+        return res.status(500).json({ error: 'Internal server error' });
+
+    }
+
+
+}
+
+const handleTransaction = async (req, res, type) => {
+    const { userId } = req.userId;
+    const { amount, transaction_description } = req.body;
+
+    // Validate the amount
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ error: 'Invalid transaction amount' });
+    }
+
+    try {
+        // Get current balance
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Calculate new balance
+        const newBalance = type === 'deposit'
+            ? Math.floor(user.balance + parsedAmount)
+            : Math.floor(user.balance - parsedAmount);
+
+        if (newBalance < 0) {
+            return res.status(400).json({ error: 'Insufficient funds' });
+        }
+
+        // Update user's balance
+        await User.findByIdAndUpdate(userId, { balance: newBalance });
+
+        // Create and save the transaction statement
+        const newTransaction = new Statement({
+            transaction_description,
+            transaction_type: type,
+            amount: parsedAmount,
+            balance_after_transaction: newBalance,
+            userId
+        });
+        await newTransaction.save();
+
+        res.status(200).json({ message: `Funds ${type}ed successfully` });
+    } catch (error) {
+        console.error('Error handling transaction:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.deposit = async (req, res) => {
+    await handleTransaction(req, res, 'deposit');
+};
+
+exports.withdraw = async (req, res) => {
+    await handleTransaction(req, res, 'withdrawal');
+};
+
+exports.getAccountInfo = async (req, res) => {
+    const { userId } = req.userId;
+
+    try {
+        // Check if the user already exists
+        const user = await User.findById(userId);
+
+        const { accountType, sortCode, balance, accountNumber } = user
+
+        const accountInformation = { accountType, sortCode, balance, accountNumber }
+
+        res.json({ accountInformation })
+
+    } catch (error) {
+        console.error('Error handling user registration:', error.message);
+        return res.status(500).json({ error: 'Internal server error.' });
+    }
+}
+

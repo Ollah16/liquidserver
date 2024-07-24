@@ -1,5 +1,5 @@
 const express = require('express')
-const { handleUserLogin, handleUserReg, getOtp, submitOtp } = require('../controller/user')
+const { handleUserLogin, handleUserReg, getOtp, submitOtp, getUserCredentials, getStatement, deposit, withdraw, getAccountInfo } = require('../controller/user')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 
@@ -21,6 +21,12 @@ router.post('/register', handleUserReg)
 
 router.get('/getOtp', jwtMiddleWare, getOtp)
 router.post('/submitotp', jwtMiddleWare, submitOtp)
+router.get('/getdetails', jwtMiddleWare, getUserCredentials)
+router.get('/getstatement', jwtMiddleWare, getStatement)
+router.post('/deposit', jwtMiddleWare, deposit)
+router.post('/withdraw', jwtMiddleWare, withdraw)
+router.get('/getaccountinformation', jwtMiddleWare, getAccountInfo)
+
 
 
 module.exports = router
