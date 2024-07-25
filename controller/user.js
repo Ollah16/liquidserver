@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt')
 const jwt = require("jsonwebtoken");
 const { authenticator } = require('otplib');
 const nodemailer = require('nodemailer');
-const { User, Statement } = require('../model/userSchema');
+const { User, Statement, Beneficiary } = require('../model/userSchema');
 
 const secret = authenticator.generateSecret();
 let oneTimePass;
@@ -66,6 +66,7 @@ exports.handleUserLogin = async (req, res) => {
 
         // Check if the user exists
         const user = await User.findOne({ userId });
+
         if (!user) {
             return res.status(404).json({ error: 'User does not exist.' });
         }
@@ -75,6 +76,8 @@ exports.handleUserLogin = async (req, res) => {
         if (!isPasswordValid) {
             return res.status(401).json({ error: 'Incorrect user ID or password.' });
         }
+
+        await User.findOneAndUpdate({ userId }, { lastLogin: new Date() })
 
         //Generate token
         const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -122,7 +125,8 @@ exports.handleUserReg = async (req, res) => {
             accountNumber,
             accountType,
             balance: parseFloat(balance),
-            sortCode
+            sortCode,
+            lastLogin: 0
         });
 
         // Save the user to the database
@@ -208,9 +212,7 @@ exports.getUserCredentials = async (req, res) => {
             res.status(404).json({ error: 'User does not exist' })
         }
 
-        const { title, firstName, lastName, dob, email, phone, balance, address, accountNumber, accountType, sortCode } = user
-
-        const lastLogin = new Date()
+        const { title, firstName, lastName, dob, email, phone, balance, address, accountNumber, accountType, sortCode, lastLogin } = user
 
         const userDetails = { title, firstName, lastName, dob, email, phone, balance, address, accountNumber, accountType, sortCode, lastLogin }
 
@@ -312,4 +314,73 @@ exports.getAccountInfo = async (req, res) => {
         return res.status(500).json({ error: 'Internal server error.' });
     }
 }
+
+exports.addBeneficiary = async (req, res) => {
+    const { userId } = req.userId;
+    const { recipientFullName, recipientAccountNumber, recipientSortCode } = req.body
+
+    try {
+        // Check if the user already exists
+        const user = await User.findById(userId);
+
+        if (!user) return res.status(404).json({ error: 'user not found' })
+
+        const newBeneficiary = await Beneficiary({ recipientFullName, recipientAccountNumber, recipientSortCode, userId })
+
+        newBeneficiary.save()
+
+        res.status(200).json({ message: 'recipient added successfully' })
+
+    } catch (error) {
+        console.error('Error add beneficiary:', error.message);
+        return res.status(500).json({ error: 'Internal server error.' });
+    }
+}
+
+exports.getAllBeneficiary = async (req, res) => {
+    const { userId } = req.userId;
+
+    try {
+        // Check if the user already exists
+        const user = await User.findById(userId);
+
+        if (!user) return res.status(404).json({ error: 'user not found' })
+
+        const allBeneficiary = await Beneficiary.find({ userId })
+
+        res.status(200).json({ allBeneficiary })
+
+    } catch (error) {
+        console.error('Error fetching beneficiaries:', error.message);
+        return res.status(500).json({ error: 'Internal server error.' });
+    }
+}
+
+exports.deleteBeneficiary = async (req, res) => {
+    const { userId } = req.userId;
+    const { id } = req.params;
+
+    try {
+        // Check if the user exists
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Find and delete the beneficiary
+        const beneficiary = await Beneficiary.findByIdAndDelete(id);
+
+        if (!beneficiary) {
+            return res.status(404).json({ error: 'Beneficiary not found' });
+        }
+
+        res.status(200).json({ message: 'Recipient deleted successfully' });
+
+    } catch (error) {
+        console.error('Error deleting recipient:', error.message);
+        return res.status(500).json({ error: 'Internal server error.' });
+    }
+};
+
 

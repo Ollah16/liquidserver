@@ -63,7 +63,7 @@ const userSchema = new Schema({
         required: true,
     },
     accountNumber: {
-        type: Number,
+        type: String,
         required: true,
     },
     accountType: {
@@ -75,6 +75,10 @@ const userSchema = new Schema({
         type: Number,
         required: true,
         min: [0, 'Balance cannot be negative']
+    },
+    lastLogin: {
+        type: Number,
+        required: true
     },
     created_at: {
         type: Date,
@@ -114,8 +118,35 @@ const statementSchema = new Schema({
 
 });
 
+//beneficiary schema
+
+const beneficiarySchema = new Schema({
+    recipientFullName: {
+        type: String,
+        required: true,
+    },
+    recipientAccountNumber: {
+        type: String,
+        required: true,
+    },
+    recipientSortCode: {
+        type: String,
+        required: true
+    },
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    recipientRefernce: {
+        type: String,
+        required: false
+    }
+});
+
 // Create models
 const User = model('User', userSchema);
 const Statement = model('Statement', statementSchema);
+const Beneficiary = model('Beneficiary', beneficiarySchema);
 
-module.exports = { User, Statement };
+module.exports = { User, Statement, Beneficiary };
