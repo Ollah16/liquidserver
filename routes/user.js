@@ -11,22 +11,32 @@ const {
     getAccountInfo,
     addBeneficiary,
     getAllBeneficiary,
-    deleteBeneficiary } = require('../controller/user')
+    deleteBeneficiary,
+    getRecipient,
+    getExchangeRates } = require('../controller/user')
 
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 
 const jwtMiddleWare = async (req, res, next) => {
-    let { authorization } = req.headers
-    let [, token] = authorization.split(' ')
-    let userId = await jwt.verify(token, process.env.JWT_SECRET)
-    if (userId) {
-        req.userId = userId
-        next()
+    try {
+        let { authorization } = req.headers
+        let [, token] = authorization.split(' ')
+        let userId = await jwt.verify(token, process.env.JWT_SECRET)
+        if (userId) {
+            req.userId = userId
+            next()
+        }
     }
-    else {
-        res.send('Cannot Execute Request')
+    catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token expired' });
+        } else if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+        next(error);
     }
+
 }
 
 router.post('/login', handleUserLogin)
@@ -42,7 +52,8 @@ router.get('/getaccountinformation', jwtMiddleWare, getAccountInfo)
 router.post('/addBeneficiary', jwtMiddleWare, addBeneficiary)
 router.get('/getAllBeneficiary', jwtMiddleWare, getAllBeneficiary)
 router.patch('/delBeneficiary/:id', jwtMiddleWare, deleteBeneficiary)
-
+router.get('/getrecipient/:id', jwtMiddleWare, getRecipient)
+router.get('/rate', jwtMiddleWare, getExchangeRates)
 
 
 module.exports = router

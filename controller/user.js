@@ -2,6 +2,8 @@ const bcrypt = require('bcrypt')
 const jwt = require("jsonwebtoken");
 const { authenticator } = require('otplib');
 const nodemailer = require('nodemailer');
+const axios = require('axios')
+
 const { User, Statement, Beneficiary } = require('../model/userSchema');
 
 const secret = authenticator.generateSecret();
@@ -317,25 +319,26 @@ exports.getAccountInfo = async (req, res) => {
 
 exports.addBeneficiary = async (req, res) => {
     const { userId } = req.userId;
-    const { recipientFullName, recipientAccountNumber, recipientSortCode } = req.body
+    const { recipientFullName, recipientAccountNumber, recipientSortCode } = req.body;
 
     try {
-        // Check if the user already exists
+        // Check if the user exists
         const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
 
-        if (!user) return res.status(404).json({ error: 'user not found' })
+        // Create and save new beneficiary
+        const newBeneficiary = new Beneficiary({ recipientFullName, recipientAccountNumber, recipientSortCode, userId });
+        await newBeneficiary.save();
 
-        const newBeneficiary = await Beneficiary({ recipientFullName, recipientAccountNumber, recipientSortCode, userId })
-
-        newBeneficiary.save()
-
-        res.status(200).json({ message: 'recipient added successfully' })
+        // Respond with success message and the new beneficiary's ID
+        res.status(200).json({ beneficiaryId: newBeneficiary._id });
 
     } catch (error) {
-        console.error('Error add beneficiary:', error.message);
+        console.error('Error adding beneficiary:', error.message);
         return res.status(500).json({ error: 'Internal server error.' });
     }
-}
+};
+
 
 exports.getAllBeneficiary = async (req, res) => {
     const { userId } = req.userId;
@@ -352,6 +355,26 @@ exports.getAllBeneficiary = async (req, res) => {
 
     } catch (error) {
         console.error('Error fetching beneficiaries:', error.message);
+        return res.status(500).json({ error: 'Internal server error.' });
+    }
+}
+
+exports.getRecipient = async (req, res) => {
+    const { userId } = req.userId;
+    const { id } = req.params
+
+    try {
+        // Check if the user already exists
+        const user = await User.findById(userId);
+
+        if (!user) return res.status(404).json({ error: 'user not found' })
+
+        const recipient = await Beneficiary.findById(id)
+
+        res.status(200).json({ recipient })
+
+    } catch (error) {
+        console.error('Error fetching recipient:', error.message);
         return res.status(500).json({ error: 'Internal server error.' });
     }
 }
@@ -384,3 +407,18 @@ exports.deleteBeneficiary = async (req, res) => {
 };
 
 
+exports.getExchangeRates = async (req, res) => {
+
+    try {
+        const apiKey = process.env.EXCHANGE_API
+
+        const response = await axios.get(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/GBP`)
+        const exchangeRates = response.data;
+
+        res.status(200).json({ exchangeRates })
+
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+        return null;
+    }
+};
