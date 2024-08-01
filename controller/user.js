@@ -82,7 +82,7 @@ exports.handleUserLogin = async (req, res) => {
         await User.findOneAndUpdate({ userId }, { lastLogin: new Date() })
 
         //Generate token
-        const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '10m' });
 
         // Respond with the token
         return res.status(200).json({ token });
@@ -339,7 +339,6 @@ exports.addBeneficiary = async (req, res) => {
     }
 };
 
-
 exports.getAllBeneficiary = async (req, res) => {
     const { userId } = req.userId;
 
@@ -405,7 +404,6 @@ exports.deleteBeneficiary = async (req, res) => {
         return res.status(500).json({ error: 'Internal server error.' });
     }
 };
-
 
 exports.getExchangeRates = async (req, res) => {
 
