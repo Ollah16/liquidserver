@@ -146,7 +146,7 @@ exports.getOtp = async (req, res) => {
         const { userId } = req.userId;
 
         // Retrieve user's email from database using the provided id
-        const user = await User.findById(userId);
+        const user = await User.findByIdAndUpdate(userId);
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -160,6 +160,8 @@ exports.getOtp = async (req, res) => {
 
         // Send OTP to user's email
         // sendOTPByEmail(email, oneTimePass);
+
+
 
         // Respond with success message
         return res.status(200).json({ message: 'OTP sent successfully' });
@@ -180,6 +182,7 @@ exports.submitOtp = async (req, res) => {
         if (!otp) {
             return res.status(400).json({ error: 'OTP is required.' });
         }
+
 
         // Verify OTP token
         // const isValid = authenticator.verify({ token: oneTimePass, secret });
