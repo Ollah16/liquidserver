@@ -99,7 +99,7 @@ const statementSchema = new Schema({
     },
     transaction_type: {
         type: String,
-        enum: ['deposit', 'withdrawal', 'transfer'],
+        enum: ['deposit', 'withdrawal', 'transfer', 'wire'],
         required: true
     },
     amount: {

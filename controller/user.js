@@ -248,7 +248,7 @@ exports.getStatement = async (req, res) => {
 
 const handleTransaction = async (req, res, type) => {
     const { userId } = req.userId;
-    const { amount, transaction_description } = req.body;
+    const { amount, transaction_description, transaction_type } = req.body;
 
     // Validate the amount
     const parsedAmount = parseFloat(amount);
@@ -278,7 +278,7 @@ const handleTransaction = async (req, res, type) => {
         // Create and save the transaction statement
         const newTransaction = new Statement({
             transaction_description,
-            transaction_type: type,
+            transaction_type,
             amount: parsedAmount,
             balance_after_transaction: newBalance,
             userId
