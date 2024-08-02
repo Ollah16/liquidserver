@@ -6,8 +6,6 @@ const axios = require('axios')
 
 const { User, Statement, Beneficiary } = require('../model/userSchema');
 
-const secret = speakeasy.generateSecret({ length: 20 });
-
 const transporter = nodemailer.createTransport({
     host: 'smtp.office365.com',
     port: 587,
@@ -30,9 +28,16 @@ const sendOTPByEmail = async (email, oneTimePass, retries = 3) => {
     const mailOptions = {
         from: process.env.EMAIL,
         to: email,
-        subject: 'Your OTP Code',
-        text: `Your one time password is ${oneTimePass}`
+        subject: 'Your One-Time Password (OTP) Code',
+        text: `Dear User,
+    
+    Your one-time password (OTP) is: ${oneTimePass}
+    
+    Please use this code to complete your verification process. This OTP is valid for 5 minutes.
+    
+    If you did not request this code, please ignore this email.`
     };
+
 
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
@@ -152,8 +157,8 @@ exports.getOtp = async (req, res) => {
 
         // Generate one-time password
         const oneTimePass = speakeasy.totp({
-            secret: secret.base32,
-            encoding: 'base32'
+            secret: process.env.OTP_SECRET.base32,
+            encoding: 'base32',
         });
 
         // Send OTP to user's email
@@ -179,11 +184,12 @@ exports.submitOtp = async (req, res) => {
 
         // Retrieve user's email from database using the provided id
         const user = await User.findById(userId);
+
         // Verify OTP token
         const verified = speakeasy.totp.verify({
-            secret: secret.base32,
+            secret: process.env.OTP_SECRET.base32,
             encoding: 'base32',
-            token: otp
+            token: otp.toString()
         });
 
         if (!verified) {
