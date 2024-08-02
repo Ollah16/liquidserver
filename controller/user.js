@@ -189,7 +189,7 @@ exports.submitOtp = async (req, res) => {
 
     } catch (error) {
         console.error('Error verifying OTP:', error.message);
-        return res.status(500).json({ error: 'Internal server error.' });
+        return res.status(500).json({ error: 'Internal server error.', details: error.message });
     }
 };
 
