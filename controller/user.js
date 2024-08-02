@@ -176,8 +176,8 @@ exports.submitOtp = async (req, res) => {
         // Retrieve user's email from database using the provided id
         const user = await User.findById(userId);
         // Verify OTP token
-        const isValid = authenticator.verify({ token: otp, secret: process.env.OTP_SECRET });
-        console.log(isValid, typeof otp, otp)
+        const isValid = authenticator.check(otp, process.env.OTP_SECRET);
+
         if (!isValid) {
             return res.status(401).json({ error: 'Invalid OTP token.' });
         }

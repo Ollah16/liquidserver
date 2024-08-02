@@ -7,7 +7,7 @@ const cors = require('cors')
 const app = express();
 
 const corsOptions = {
-    origin: 'https://serverll.vercel.app',
+    origin: 'https://liquid-store.vercel.app',
     // origin: 'http://localhost:3000',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
