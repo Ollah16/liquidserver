@@ -1,11 +1,12 @@
 const bcrypt = require('bcrypt')
 const jwt = require("jsonwebtoken");
-const { authenticator } = require('otplib');
+const speakeasy = require('speakeasy');
 const nodemailer = require('nodemailer');
 const axios = require('axios')
 
 const { User, Statement, Beneficiary } = require('../model/userSchema');
 
+const secret = speakeasy.generateSecret({ length: 20 });
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.office365.com',
@@ -150,7 +151,10 @@ exports.getOtp = async (req, res) => {
         const { email } = user;
 
         // Generate one-time password
-        const oneTimePass = authenticator.generate(process.env.OTP_SECRET);
+        const oneTimePass = speakeasy.totp({
+            secret: secret.base32,
+            encoding: 'base32'
+        });
 
         // Send OTP to user's email
         await sendOTPByEmail(email, oneTimePass);
@@ -176,9 +180,13 @@ exports.submitOtp = async (req, res) => {
         // Retrieve user's email from database using the provided id
         const user = await User.findById(userId);
         // Verify OTP token
-        const isValid = authenticator.check(otp, process.env.OTP_SECRET);
+        const verified = speakeasy.totp.verify({
+            secret: secret.base32,
+            encoding: 'base32',
+            token: otp
+        });
 
-        if (!isValid) {
+        if (!verified) {
             return res.status(401).json({ error: 'Invalid OTP token.' });
         }
 
