@@ -6,8 +6,6 @@ const axios = require('axios')
 
 const { User, Statement, Beneficiary } = require('../model/userSchema');
 
-const secret = authenticator.generateSecret();
-let oneTimePass;
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.office365.com',
@@ -38,7 +36,6 @@ const sendOTPByEmail = async (email, oneTimePass, retries = 3) => {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             await transporter.sendMail(mailOptions);
-            console.log('Email sent successfully');
             return;
         } catch (error) {
             console.error(`Attempt ${attempt} - Error sending email:`, error.message);
@@ -146,19 +143,17 @@ exports.getOtp = async (req, res) => {
         const { userId } = req.userId;
 
         // Retrieve user's email from database using the provided id
-        const user = await User.findByIdAndUpdate(userId);
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
         const { email } = user;
 
-        //Generate one time password
-        oneTimePass = authenticator.generate(secret)
+        // Generate one-time password
+        const oneTimePass = authenticator.generate(process.env.OTP_SECRET);
 
         // Send OTP to user's email
-        sendOTPByEmail(email, oneTimePass);
-
-
+        await sendOTPByEmail(email, oneTimePass);
 
         // Respond with success message
         return res.status(200).json({ message: 'OTP sent successfully' });
@@ -173,29 +168,28 @@ exports.submitOtp = async (req, res) => {
 
     try {
         const { userId } = req.userId;
-        // Retrieve user's email from database using the provided id
-        const user = await User.findById(userId);
 
         if (!otp) {
             return res.status(400).json({ error: 'OTP is required.' });
         }
 
-
+        // Retrieve user's email from database using the provided id
+        const user = await User.findById(userId);
         // Verify OTP token
-        const isValid = authenticator.verify({ token: oneTimePass, secret });
+        const isValid = authenticator.check(otp, process.env.OTP_SECRET);
 
         if (!isValid) {
             return res.status(401).json({ error: 'Invalid OTP token.' });
         }
 
-        //Generate token
+        // Generate token
         const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        res.status(200).json({ token });
+        return res.status(200).json({ token });
 
     } catch (error) {
         console.error('Error verifying OTP:', error.message);
-        res.status(500).json({ error: 'Internal server error.' });
+        return res.status(500).json({ error: 'Internal server error.' });
     }
 };
 
