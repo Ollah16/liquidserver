@@ -154,11 +154,9 @@ exports.getOtp = async (req, res) => {
 
         //Generate one time password
         oneTimePass = authenticator.generate(secret)
-        console.log(oneTimePass)
-
 
         // Send OTP to user's email
-        // sendOTPByEmail(email, oneTimePass);
+        sendOTPByEmail(email, oneTimePass);
 
 
 
@@ -184,11 +182,7 @@ exports.submitOtp = async (req, res) => {
 
 
         // Verify OTP token
-        // const isValid = authenticator.verify({ token: oneTimePass, secret });
-        const isValid = oneTimePass === otp
-        console.log(typeof oneTimePass, typeof otp)
-
-        console.log(otp, oneTimePass, isValid)
+        const isValid = authenticator.verify({ token: oneTimePass, secret });
 
         if (!isValid) {
             return res.status(401).json({ error: 'Invalid OTP token.' });
