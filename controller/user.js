@@ -177,7 +177,7 @@ exports.submitOtp = async (req, res) => {
         const user = await User.findById(userId);
         // Verify OTP token
         const isValid = authenticator.check(otp, process.env.OTP_SECRET);
-        console.log(isValid)
+        console.log(isValid, typeof otp, otp)
         if (!isValid) {
             return res.status(401).json({ error: 'Invalid OTP token.' });
         }
