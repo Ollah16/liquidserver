@@ -1,64 +1,10 @@
 const bcrypt = require('bcrypt')
 const jwt = require("jsonwebtoken");
 const speakeasy = require('speakeasy');
-const nodemailer = require('nodemailer');
 const axios = require('axios')
 
 const { User, Statement, Beneficiary } = require('../model/userSchema');
-
-const transporter = nodemailer.createTransport({
-    host: 'smtp.office365.com',
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL,
-        pass: process.env.PASSWORD
-    },
-    tls: {
-        ciphers: 'SSLv3',
-        rejectUnauthorized: false
-    },
-    pool: true,
-    rateLimit: true,
-    maxConnections: 5,
-    maxMessages: 100
-});
-
-const sendOTPByEmail = async (email, oneTimePass, retries = 3) => {
-    const mailOptions = {
-        from: process.env.EMAIL,
-        to: email,
-        subject: 'Your One-Time Password (OTP) Code',
-        text: `Dear User,
-    
-    Your one-time password (OTP) is: ${oneTimePass}
-    
-    Please use this code to complete your verification process. This OTP is valid for 5 minutes.
-    
-    If you did not request this code, please ignore this email.`
-    };
-
-
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            await transporter.sendMail(mailOptions);
-            return;
-        } catch (error) {
-            console.error(`Attempt ${attempt} - Error sending email:`, error.message);
-            if (attempt === retries) {
-                throw new Error('Email sending failed after multiple attempts');
-            }
-        }
-    }
-};
-
-transporter.verify(function (error, success) {
-    if (error) {
-        console.log(error);
-    } else {
-        console.log("Server is ready to take our messages");
-    }
-});
+const { sendOTPByEmail } = require('../utils/mailer');
 
 exports.handleUserLogin = async (req, res) => {
     const { userId, password } = req.body;
@@ -116,6 +62,9 @@ exports.handleUserReg = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashPassword = await bcrypt.hash(password, salt);
 
+        //generate secret for one time password
+        const authSecret = speakeasy.generateSecret();
+
         // Create a new user
         const newUser = new User({
             title,
@@ -131,7 +80,8 @@ exports.handleUserReg = async (req, res) => {
             accountType,
             balance: parseFloat(balance),
             sortCode,
-            lastLogin: 0
+            lastLogin: 0,
+            authSecret: authSecret.base32
         });
 
         // Save the user to the database
@@ -153,12 +103,14 @@ exports.getOtp = async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        const { email } = user;
+        const { email, authSecret } = user;
 
         // Generate one-time password
-        const oneTimePass = speakeasy.totp({
-            secret: process.env.OTP_SECRET.base32,
+        const oneTimePass = speakeasy.time({
+            secret: authSecret,
             encoding: 'base32',
+            algorithm: "sha256",
+            step: 300
         });
 
         // Send OTP to user's email
@@ -173,23 +125,31 @@ exports.getOtp = async (req, res) => {
 };
 
 exports.submitOtp = async (req, res) => {
-    const { otp } = req.body;
+    const { oneTimePass } = req.body;
 
     try {
         const { userId } = req.userId;
 
-        if (!otp) {
+        if (!oneTimePass) {
             return res.status(400).json({ error: 'OTP is required.' });
         }
 
         // Retrieve user's email from database using the provided id
         const user = await User.findById(userId);
 
+        const { authSecret } = user
+
+        if (!authSecret) {
+            return res.status(401).json({ error: 'internal error, authsecret not found' })
+        }
+
         // Verify OTP token
-        const verified = speakeasy.totp.verify({
-            secret: process.env.OTP_SECRET.base32,
+        const verified = speakeasy.time.verify({
+            secret: authSecret,
+            token: oneTimePass,
             encoding: 'base32',
-            token: otp.toString()
+            algorithm: "sha256",
+            step: 300
         });
 
         if (!verified) {

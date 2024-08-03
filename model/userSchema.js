@@ -80,6 +80,10 @@ const userSchema = new Schema({
         type: Number,
         required: true
     },
+    authSecret: {
+        type: String,
+        required: true
+    },
     created_at: {
         type: Date,
         default: Date.now
@@ -115,7 +119,6 @@ const statementSchema = new Schema({
         ref: 'User',
         required: true
     }
-
 });
 
 //beneficiary schema
