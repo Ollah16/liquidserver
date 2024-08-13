@@ -208,10 +208,21 @@ exports.getStatement = async (req, res) => {
 
 }
 
+function generateRandomDigits() {
+    let digits = '';
+
+    for (let i = 0; i < 19; i++) {
+        const randomDigit = Math.floor(Math.random() * 10); // Generate a random digit between 0 and 9
+        digits += randomDigit;
+    }
+
+    return digits;
+}
+
 const handleTransaction = async (req, res, type) => {
     const { userId } = req.userId;
     const { amount, transaction_description, transaction_type, payment_detail } = req.body;
-
+    const reference_Number = generateRandomDigits()
     // Validate the amount
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -244,6 +255,7 @@ const handleTransaction = async (req, res, type) => {
             amount: parsedAmount,
             balance_after_transaction: newBalance,
             payment_detail,
+            reference_Number,
             userId
         });
         await newTransaction.save();

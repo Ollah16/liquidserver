@@ -105,6 +105,10 @@ const statementSchema = new Schema({
         type: String,
         required: true,
     },
+    reference_Number: {
+        type: Number,
+        required: true,
+    },
     transaction_type: {
         type: String,
         enum: ['deposit', 'withdrawal', 'transfer', 'wire'],
