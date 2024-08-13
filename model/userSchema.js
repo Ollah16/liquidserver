@@ -101,6 +101,10 @@ const statementSchema = new Schema({
         required: true,
         default: Date.now
     },
+    payment_detail: {
+        type: String,
+        required: true,
+    },
     transaction_type: {
         type: String,
         enum: ['deposit', 'withdrawal', 'transfer', 'wire'],
