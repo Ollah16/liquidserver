@@ -32,7 +32,6 @@ exports.handleUserLogin = async (req, res) => {
 
         //Generate token
         const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '10m' });
-
         // Respond with the token
         return res.status(200).json({ token });
     } catch (error) {
